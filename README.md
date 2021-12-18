@@ -1,6 +1,10 @@
 # Crew Scheduling Problem with Column generation
 
-Course project of SJTU BUSS3528.
+Course project of SJTU BUSS3528.  
+You need to install following packages in order to run the code:  
+- [Numpy](https://numpy.org/)  
+- [Gurobi](https://www.gurobi.com/)
+
 
 ## Problem Definition
 
