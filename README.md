@@ -36,9 +36,9 @@ over an acyclic time-space network.
 ![longestpath](./imgs/longestpath.png)
 ![sub](./imgs/sub.png)
 
-To balance the workload of every crew, we can also add maximum and minimum working time in the subproblem:
-$$mintime \leq C \leq maxtime$$
-
+To balance the workload of every crew, we can also add maximum working time in the subproblem:
+$$C \leq maxtime$$
+Since the minimum cost of a pairing including flight 1 is 11 hours, maxtime should be no less than 11.
 
 ## Results
 For the basic problem:
