@@ -5,15 +5,28 @@ import argparse
 
 
 parser = argparse.ArgumentParser(description="min and max work time")
-parser.add_argument("-lb","--minwork", default=-1,type=int,help="minimum work time for a crew")
 parser.add_argument("-ub","--maxwork", default=-1,type=int,help="maximum work time for a crew")
 args = parser.parse_args()
-print("minimum work time for a crew:",args.minwork)
-print("maximum work time for a crew:",args.maxwork)
+if(args.maxwork!=-1):
+    if(args.maxwork<11):
+        print("maximum work time longer than 11 hours")
+        assert args.maxwork>=11
 
 
-flightTime=[4,2,2,2,2,2,2,2]#time for the eight flights
-initialPairings=np.identity(8)
+
+initialPairings=np.array([
+    [1,1,0,0,0,0,0,0],
+    [0,0,0,1,0,0,1,0],
+    [0,1,1,0,0,0,0,0],
+    [0,0,1,0,0,0,1,0],
+    [0,1,0,1,0,0,0,0],
+    [0,0,1,0,1,0,0,0],
+    [0,0,0,0,1,0,0,1],
+    [0,0,0,0,0,1,0,1]
+])
+initialPairIndex=np.array([[1,2],[4,7],[2,3],[3,7],[2,4],[3,5],[6,8],[7,8]])
+initialCost=[6,5,5,4,6,5,5,5]
+
 try:
     rmp=Model()#main problem
     sub=Model()#sub problem
@@ -26,9 +39,9 @@ try:
 
     #setup main problem and check
     y = rmp.addMVar(8, name = 'p_init',lb=0,ub=1,vtype=GRB.INTEGER)
-    cost=np.array(flightTime)+5    
+    cost=np.array(initialCost)+5    
     rmp.setObjective(cost@y, GRB.MINIMIZE)
-    rmp.addConstr(initialPairings@y >= np.ones((8)), name='c')
+    rmp.addConstr(initialPairings.T@y >= np.ones((8)), name='c')
     rmp.optimize()
 
     # print("--------------initial----------------------")
@@ -61,9 +74,9 @@ try:
 
     #cost of the pairing
     c=sub.addVar(obj=1.0,name='C')
-    sub.addConstr(4*x[0]+2*x[1]+2*x[2]+2*x[3]+2*x[4]+2*x[5]+2*x[6]+2*x[7]+5==c,'c0')
+    sub.addConstr(4*x[0]+2*x[1]+2*x[2]+2*x[3]+2*x[4]+2*x[5]+2*x[6]+2*x[7]+x[8]+x[9]+x[10]+x[11]+5==c,'c0')
 
-    #constrains for the longest path problem
+    #constrains for the shortest path problem
     sub.addConstr( xs[0]+xs[1]+xs[2]+xs[3]+xs[4]+xs[5]+xs[6]+xs[7] ==1, 'c1')
     sub.addConstr( xt[0]+xt[1]+xt[2]+xt[3]+xt[4]+xt[5]+xt[6]+xt[7] ==1, 'c2')
     sub.addConstr( x[0]+x[1]+x[2]+x[3]+x[4]+x[5]+x[6]+x[7] >=2, 'c3')
@@ -81,14 +94,14 @@ try:
     sub.addConstr( xs[6]+x[8]==x[6], 'c12')#start of 7
     sub.addConstr( xs[7]==x[7], 'c12')#start of 8
 
-    if(args.minwork!=-1):
-        sub.addConstr( c >=args.minwork+5, 'c13')
+
     if(args.maxwork!=-1):
-        sub.addConstr( c <=args.maxwork+5, 'c14')
+        sub.addConstr( c <=args.maxwork, 'c13')
+        print("maximum work time for a crew:",args.maxwork)
 
     sub.optimize()
 
-    # print("--------------initial longest path----------------------")
+    # print("--------------initial shortest path----------------------")
     # print(sub.objVal)
     # for v in sub.getVars():
     #     print('%s: %s' % (v.varName, v.x))
@@ -121,16 +134,15 @@ try:
     #get the final results
     rmp.optimize()
     # print("--------------result----------------------")
-    print("total cost:",int(rmp.objVal))
+    print("Total Cost:",int(rmp.objVal))
     v=rmp.getVars()
-    print("The Combination of Following Pairings is Optimal")
+    print("The Combination of Following Pairings is Optimal:")
     for i in range(len(v)):
         if v[i].x != 0.0:
             if(i<8):
-                print('pairing '+str(i+1)+': flight'+str(i+1),",costing "+str(costList[i])+" hours")
+                print('pairing '+str(i+1)+': flight'+str(initialPairIndex[i,0])+" flight"+str(initialPairIndex[i,1]),",costing "+str(costList[i])+" hours")
             else:
                 print(v[i].varName,",costing "+str(costList[i])+" hours")
-
 
 except GurobiError as e:
     print('Error code ' + str(e.errno) + ": " + str(e))
@@ -139,10 +151,11 @@ except AttributeError:
 
 
 '''
-SUMMARY AND TAKEOVERS
+PROBLEMS AND TAKEOVERS
 
-
-
+We find out that dual variables of the master problem are not available with gurobi, 
+because the master problem is an integer programming problem.
+Instead we formulate and solve the dual problem to calculate reduced costs.
 
 '''
 
